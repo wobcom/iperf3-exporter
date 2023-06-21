@@ -23,6 +23,7 @@ var (
 	iperf3OmitDuration = flag.Duration("iper3.omitTime", 5*time.Second, "Omit the first  n  seconds  of the test, to skip past the TCP slow-start period")
 	iperf3Mss          = flag.Int("iperf3.mss", 1400, "Set TCP/SCTP maximum segment size (MTU - 40 bytes)")
 	iperf3Reverse      = flag.Bool("iperf3.reverse", false, "Reverse the direction of a test, so that the server sends data to the client")
+	iperf3Bandwidth    = flag.String("iperf3.bandwidth", "", "Bandwidth limit according to iperf3")
 
 	iperf3DurationSummary = prometheus.NewSummary(prometheus.SummaryOpts{Name: prometheus.BuildFQName(namespace, "exporter", "duration_seconds"), Help: "Duration of collections by the iperf3 exporter."})
 	iperf3Errors          = prometheus.NewCounter(prometheus.CounterOpts{Name: prometheus.BuildFQName(namespace, "exporter", "errors_total"), Help: "Errors raised by the iperf3 exporter."})
@@ -136,6 +137,11 @@ func handleProbeRequest(w http.ResponseWriter, request *http.Request) {
 		}
 	}
 
+	var testBandwidth *string
+	if *iperf3Bandwidth != "" {
+		testBandwidth = iperf3Bandwidth
+	}
+
 	iperf3Collector := &collector.Collector{
 		Timeout:      *iperf3Timeout,
 		Iperf3Path:   *iperf3Path,
@@ -144,6 +150,7 @@ func handleProbeRequest(w http.ResponseWriter, request *http.Request) {
 		OmitDuration: testOmitDuration,
 		MSS:          testMss,
 		Reverse:      testReverse,
+		Bandwidth:    testBandwidth,
 
 		ErrorCounter: iperf3Errors,
 		RxCounter:    iperf3BytesReceived,

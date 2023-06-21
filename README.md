@@ -15,6 +15,8 @@ Usage of ./iperf3-exporter:
     	time in seconds to transmit for (default 10s)
   -iperf3.timeout duration
     	iperf3 timeout (default 30s)
+  -iperf3.bandwidth string
+    	iperf3 bandwidth limit
   -log.level string
     	Logging level (default "info")
   -web.listen-address string

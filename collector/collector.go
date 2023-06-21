@@ -19,6 +19,7 @@ type Collector struct {
 	OmitDuration time.Duration
 	MSS          int
 	Reverse      bool
+	Bandwidth    *string
 
 	ErrorCounter prometheus.Counter
 	RxCounter    prometheus.Gauge
@@ -225,6 +226,10 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	if c.Reverse {
 		args = append(args, "-R")
 	}
+	if c.Bandwidth != nil {
+		args = append(args, "-b", *c.Bandwidth)
+	}
+
 	out, err := exec.CommandContext(ctx, c.Iperf3Path, args...).Output()
 
 	logger.Debug("iperf3 done")
