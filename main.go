@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const version = "1.1.0"
+const version = "1.1.1"
 const namespace = "iperf3"
 
 var (
@@ -140,6 +140,11 @@ func handleProbeRequest(w http.ResponseWriter, request *http.Request) {
 	var testBandwidth *string
 	if *iperf3Bandwidth != "" {
 		testBandwidth = iperf3Bandwidth
+	}
+
+	bandwidth := request.URL.Query().Get("bandwidth")
+	if bandwidth != "" {
+		testBandwidth = &bandwidth
 	}
 
 	iperf3Collector := &collector.Collector{
