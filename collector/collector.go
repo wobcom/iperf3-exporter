@@ -217,6 +217,8 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		"duration":      c.Duration,
 		"omit_duration": c.OmitDuration,
 		"mss":           c.MSS,
+		"bandwidth":     c.Bandwidth,
+		"port":          c.Port,
 	})
 
 	logger.Debug("Performing iperf3")
