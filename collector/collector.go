@@ -20,6 +20,7 @@ type Collector struct {
 	MSS          int
 	Reverse      bool
 	Bandwidth    *string
+	Port         uint
 
 	ErrorCounter prometheus.Counter
 	RxCounter    prometheus.Gauge
@@ -216,12 +217,14 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		"duration":      c.Duration,
 		"omit_duration": c.OmitDuration,
 		"mss":           c.MSS,
+		"bandwidth":     c.Bandwidth,
+		"port":          c.Port,
 	})
 
 	logger.Debug("Performing iperf3")
 
 	args := []string{
-		"-J", "-M", strconv.Itoa(c.MSS), "-t", strconv.FormatFloat(c.Duration.Seconds(), 'f', 0, 64), "-O", strconv.FormatFloat(c.OmitDuration.Seconds(), 'f', 0, 64), "-c", c.Target,
+		"-J", "-M", strconv.Itoa(c.MSS), "-p", strconv.FormatUint(uint64(c.Port), 10), "-t", strconv.FormatFloat(c.Duration.Seconds(), 'f', 0, 64), "-O", strconv.FormatFloat(c.OmitDuration.Seconds(), 'f', 0, 64), "-c", c.Target,
 	}
 	if c.Reverse {
 		args = append(args, "-R")

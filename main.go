@@ -24,6 +24,7 @@ var (
 	iperf3Mss          = flag.Int("iperf3.mss", 1400, "Set TCP/SCTP maximum segment size (MTU - 40 bytes)")
 	iperf3Reverse      = flag.Bool("iperf3.reverse", false, "Reverse the direction of a test, so that the server sends data to the client")
 	iperf3Bandwidth    = flag.String("iperf3.bandwidth", "", "Bandwidth limit according to iperf3")
+	iperf3Port         = flag.Uint("iperf3.port", 5201, "Port of the iperf3 server to use")
 
 	iperf3DurationSummary = prometheus.NewSummary(prometheus.SummaryOpts{Name: prometheus.BuildFQName(namespace, "exporter", "duration_seconds"), Help: "Duration of collections by the iperf3 exporter."})
 	iperf3Errors          = prometheus.NewCounter(prometheus.CounterOpts{Name: prometheus.BuildFQName(namespace, "exporter", "errors_total"), Help: "Errors raised by the iperf3 exporter."})
@@ -124,6 +125,11 @@ func handleProbeRequest(w http.ResponseWriter, request *http.Request) {
 			return
 		}
 	}
+	if testMss < 535 {
+		iperf3Errors.Inc()
+		logger.Error("'mss' parameter must be integer > 535")
+		return
+	}
 
 	reverse := request.URL.Query().Get("reverse")
 	testReverse := *iperf3Reverse
@@ -147,6 +153,25 @@ func handleProbeRequest(w http.ResponseWriter, request *http.Request) {
 		testBandwidth = &bandwidth
 	}
 
+	port := request.URL.Query().Get("port")
+	testPort := *iperf3Port
+	if port != "" {
+		var uint64Port uint64
+		uint64Port, err = strconv.ParseUint(port, 10, 16)
+		testPort = uint(uint64Port)
+		if err != nil {
+			http.Error(w, "'port' parameter must be a port number <= 65535", http.StatusBadRequest)
+			iperf3Errors.Inc()
+			logger.Error("'port' parameter must be a port number <= 65535")
+			return
+		}
+	}
+	if testPort > 65535 {
+		iperf3Errors.Inc()
+		logger.Error("'port' parameter must be a port number <= 65535")
+		return
+	}
+
 	iperf3Collector := &collector.Collector{
 		Timeout:      *iperf3Timeout,
 		Iperf3Path:   *iperf3Path,
@@ -156,6 +181,7 @@ func handleProbeRequest(w http.ResponseWriter, request *http.Request) {
 		MSS:          testMss,
 		Reverse:      testReverse,
 		Bandwidth:    testBandwidth,
+		Port:         testPort,
 
 		ErrorCounter: iperf3Errors,
 		RxCounter:    iperf3BytesReceived,
