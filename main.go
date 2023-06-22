@@ -125,6 +125,11 @@ func handleProbeRequest(w http.ResponseWriter, request *http.Request) {
 			return
 		}
 	}
+	if testMss < 535 {
+		iperf3Errors.Inc()
+		logger.Error("'mss' parameter must be integer > 535")
+		return
+	}
 
 	reverse := request.URL.Query().Get("reverse")
 	testReverse := *iperf3Reverse
