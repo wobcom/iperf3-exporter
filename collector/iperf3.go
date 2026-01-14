@@ -34,6 +34,7 @@ type Iperf3TestStart struct {
 	Bytes      int    `json:"bytes"`
 	Blocks     int    `json:"blocks"`
 	Reverse    int    `json:"reverse"`
+	Bidir      int    `json:"bidir"`
 	TOS        int    `json:"tos"`
 }
 
@@ -70,12 +71,14 @@ type Iperf3IntervalSummary struct {
 }
 
 type Iperf3End struct {
-	Streams               []*Iperf3EndStream     `json:"streams"`
-	SummarySent           *Iperf3SummarySent     `json:"sum_sent"`
-	SummaryReceived       *Iperf3SummaryReceived `json:"sum_received"`
-	CpuUsage              *Iperf3CpuUsage        `json:"cpu_utilization_percent"`
-	SenderTcpCongestion   string                 `json:"sender_tcp_congestion"`
-	ReceiverTcpCongestion string                 `json:"receiver_tcp_congestion"`
+	Streams                     []*Iperf3EndStream                 `json:"streams"`
+	SummarySent                 *Iperf3SummarySent                 `json:"sum_sent"`
+	SummaryReceived             *Iperf3SummaryReceived             `json:"sum_received"`
+	SummarySentBidirReverse     *Iperf3SummarySentBidirReverse     `json:"sum_sent_bidir_reverse"`
+	SummaryReceivedBidirReverse *Iperf3SummaryReceivedBidirReverse `json:"sum_received_bidir_reverse"`
+	CpuUsage                    *Iperf3CpuUsage                    `json:"cpu_utilization_percent"`
+	SenderTcpCongestion         string                             `json:"sender_tcp_congestion"`
+	ReceiverTcpCongestion       string                             `json:"receiver_tcp_congestion"`
 }
 
 type Iperf3EndStream struct {
@@ -119,6 +122,25 @@ type Iperf3SummarySent struct {
 }
 
 type Iperf3SummaryReceived struct {
+	Start         float64 `json:"start"`
+	End           float64 `json:"end"`
+	Seconds       float64 `json:"seconds"`
+	Bytes         int     `json:"bytes"`
+	BitsPerSecond float64 `json:"bits_per_second"`
+	Sender        bool    `json:"sender"`
+}
+
+type Iperf3SummarySentBidirReverse struct {
+	Start         float64 `json:"start"`
+	End           float64 `json:"end"`
+	Seconds       float64 `json:"seconds"`
+	Bytes         int     `json:"bytes"`
+	BitsPerSecond float64 `json:"bits_per_second"`
+	Retransmits   int     `json:"retransmits"`
+	Sender        bool    `json:"sender"`
+}
+
+type Iperf3SummaryReceivedBidirReverse struct {
 	Start         float64 `json:"start"`
 	End           float64 `json:"end"`
 	Seconds       float64 `json:"seconds"`

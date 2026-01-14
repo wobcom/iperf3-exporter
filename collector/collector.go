@@ -19,6 +19,7 @@ type Collector struct {
 	OmitDuration time.Duration
 	MSS          int
 	Reverse      bool
+	Bidir        bool
 	Bandwidth    *string
 	Port         uint
 
@@ -46,6 +47,7 @@ var (
 	bytesDesc      *prometheus.Desc
 	blocksDesc     *prometheus.Desc
 	reverseDesc    *prometheus.Desc
+	bidirDesc      *prometheus.Desc
 
 	intervalStreamsSecondsDesc               *prometheus.Desc
 	intervalStreamsBytesDesc                 *prometheus.Desc
@@ -74,6 +76,11 @@ var (
 	sumSentBytesDesc       *prometheus.Desc
 	sumReceivedSecondsDesc *prometheus.Desc
 	sumReceivedBytesDesc   *prometheus.Desc
+
+	sumSentBidirReverseSecondsDesc     *prometheus.Desc
+	sumSentBidirReverseBytesDesc       *prometheus.Desc
+	sumReceivedBidirReverseSecondsDesc *prometheus.Desc
+	sumReceivedBidirReverseBytesDesc   *prometheus.Desc
 
 	cpuUtilizationPercentHostTotalDesc    *prometheus.Desc
 	cpuUtilizationPercentHostUserDesc     *prometheus.Desc
@@ -105,6 +112,7 @@ func init() {
 	bytesDesc = prometheus.NewDesc("iperf3_bytes", "Test bytes to transfer", nil, nil)
 	blocksDesc = prometheus.NewDesc("iperf3_blocks_count", "Test blocks to transfer", nil, nil)
 	reverseDesc = prometheus.NewDesc("iperf3_reverse_bool", "Wheter to run test in reverse", nil, nil)
+	bidirDesc = prometheus.NewDesc("iperf3_bidir_bool", "Test in bidirectional mode", nil, nil)
 
 	intervalStreamsLabels := []string{"socket", "start", "end", "omitted", "sender"}
 	intervalStreamsSecondsDesc = prometheus.NewDesc("iperf3_intervals_streams_seconds", "Duration of the interval in seconds", intervalStreamsLabels, nil)
@@ -137,6 +145,11 @@ func init() {
 	sumReceivedSecondsDesc = prometheus.NewDesc("iperf3_sum_received_seconds", "Total receive duration", nil, nil)
 	sumReceivedBytesDesc = prometheus.NewDesc("iperf3_sum_received_bytes", "Total received bytes", nil, nil)
 
+	sumSentBidirReverseSecondsDesc = prometheus.NewDesc("iperf3_sum_sent_bidir_reverse_seconds", "Total send duration in reverse direction", nil, nil)
+	sumSentBidirReverseBytesDesc = prometheus.NewDesc("iperf3_sum_sent_bidir_reverse_bytes", "Total bytes sent in reverse direction", nil, nil)
+	sumReceivedBidirReverseSecondsDesc = prometheus.NewDesc("iperf3_sum_received_bidir_reverse_seconds", "Total receive duration in reverse direction", nil, nil)
+	sumReceivedBidirReverseBytesDesc = prometheus.NewDesc("iperf3_sum_received_bidir_reverse_bytes", "Total received bytes in reverse direction", nil, nil)
+
 	cpuUtilizationPercentHostTotalDesc = prometheus.NewDesc("iperf3_cpu_utilization_host_total_percent", "CPU utilization host total", nil, nil)
 	cpuUtilizationPercentHostUserDesc = prometheus.NewDesc("iperf3_cpu_utilization_host_user_percent", "CPU utilization host user", nil, nil)
 	cpuUtilizationPercentHostSystemDesc = prometheus.NewDesc("iperf3_cpu_utilization_host_system_percent", "CPU utilization host system", nil, nil)
@@ -167,6 +180,7 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- bytesDesc
 	ch <- blocksDesc
 	ch <- reverseDesc
+	ch <- bidirDesc
 
 	ch <- intervalStreamsSecondsDesc
 	ch <- intervalStreamsBytesDesc
@@ -195,6 +209,11 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- sumSentBytesDesc
 	ch <- sumReceivedSecondsDesc
 	ch <- sumReceivedBytesDesc
+
+	ch <- sumSentBidirReverseSecondsDesc
+	ch <- sumSentBidirReverseBytesDesc
+	ch <- sumReceivedBidirReverseSecondsDesc
+	ch <- sumReceivedBidirReverseBytesDesc
 
 	ch <- cpuUtilizationPercentHostTotalDesc
 	ch <- cpuUtilizationPercentHostUserDesc
@@ -228,6 +247,9 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	}
 	if c.Reverse {
 		args = append(args, "-R")
+	}
+	if c.Bidir {
+		args = append(args, "--bidir")
 	}
 	if c.Bandwidth != nil {
 		args = append(args, "-b", *c.Bandwidth)
@@ -287,6 +309,7 @@ func reportMetrics(r *Iperf3Results, ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(bytesDesc, prometheus.GaugeValue, float64(r.Start.TestStart.Bytes))
 	ch <- prometheus.MustNewConstMetric(blocksDesc, prometheus.GaugeValue, float64(r.Start.TestStart.Blocks))
 	ch <- prometheus.MustNewConstMetric(reverseDesc, prometheus.GaugeValue, float64(r.Start.TestStart.Reverse))
+	ch <- prometheus.MustNewConstMetric(bidirDesc, prometheus.GaugeValue, float64(r.Start.TestStart.Bidir))
 
 	for _, interval := range r.Intervals {
 		for _, stream := range interval.Streams {
@@ -347,6 +370,13 @@ func reportMetrics(r *Iperf3Results, ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(sumSentBytesDesc, prometheus.GaugeValue, float64(r.End.SummarySent.Bytes))
 	ch <- prometheus.MustNewConstMetric(sumReceivedSecondsDesc, prometheus.GaugeValue, r.End.SummaryReceived.Seconds)
 	ch <- prometheus.MustNewConstMetric(sumReceivedBytesDesc, prometheus.GaugeValue, float64(r.End.SummaryReceived.Bytes))
+
+	if r.Start.TestStart.Bidir == 1 {
+		ch <- prometheus.MustNewConstMetric(sumSentBidirReverseSecondsDesc, prometheus.GaugeValue, r.End.SummarySentBidirReverse.Seconds)
+		ch <- prometheus.MustNewConstMetric(sumSentBidirReverseBytesDesc, prometheus.GaugeValue, float64(r.End.SummarySentBidirReverse.Bytes))
+		ch <- prometheus.MustNewConstMetric(sumReceivedBidirReverseSecondsDesc, prometheus.GaugeValue, r.End.SummaryReceivedBidirReverse.Seconds)
+		ch <- prometheus.MustNewConstMetric(sumReceivedBidirReverseBytesDesc, prometheus.GaugeValue, float64(r.End.SummaryReceivedBidirReverse.Bytes))
+	}
 
 	ch <- prometheus.MustNewConstMetric(cpuUtilizationPercentHostTotalDesc, prometheus.GaugeValue, r.End.CpuUsage.HostTotal)
 	ch <- prometheus.MustNewConstMetric(cpuUtilizationPercentHostUserDesc, prometheus.GaugeValue, r.End.CpuUsage.HostUser)

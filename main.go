@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const version = "1.2.1"
+const version = "1.3.0"
 const namespace = "iperf3"
 
 var (
@@ -23,6 +23,7 @@ var (
 	iperf3OmitDuration = flag.Duration("iper3.omitTime", 5*time.Second, "Omit the first  n  seconds  of the test, to skip past the TCP slow-start period")
 	iperf3Mss          = flag.Int("iperf3.mss", 1400, "Set TCP/SCTP maximum segment size (MTU - 40 bytes)")
 	iperf3Reverse      = flag.Bool("iperf3.reverse", false, "Reverse the direction of a test, so that the server sends data to the client")
+	iperf3Bidir        = flag.Bool("iperf3.bidir", false, "Run a bidirectional test where both directions are tested at the same time")
 	iperf3Bandwidth    = flag.String("iperf3.bandwidth", "", "Bandwidth limit according to iperf3")
 	iperf3Port         = flag.Uint("iperf3.port", 5201, "Port of the iperf3 server to use")
 
@@ -51,17 +52,30 @@ func main() {
 	prometheus.MustRegister(iperf3BytesReceived)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-            <head><title>iperf3-exporter</title></head>
-			<body>
-			<h1>iperf3-exporter</h1>
-			<p>` + version + `</p>
-			<form action="/probe" method="GET">
-			<input type="text" name="target" value="target" />
-			<input type="text" name="duration" value="5s" />
-			</form>
-			</body>
-			</html>`))
+		w.Write([]byte(`
+		<!DOCTYPE html>
+		<html>
+		<body>
+
+		<h2>Prometheus iperf3 Exporter</h2>
+
+		<form action="/probe" method="GET">
+
+		<label for="target">Target:</label><br>
+		<input type="text" id="target" name="target" value="speedtest.example.com"><br>
+
+		<label for="duration">Duration:</label><br>
+		<input type="text" id="duration" name="duration" value="5s"><br><br>
+
+		<label for="bidir">Run test in bidirectional mode</label><br>
+                <input type="checkbox" id="bidir" name="bidir" value="true">
+
+		<input type="submit" value="Run">
+		</form>
+
+		</body>
+		</html>
+		`))
 	})
 
 	http.Handle("/metrics", promhttp.Handler())
@@ -143,6 +157,18 @@ func handleProbeRequest(w http.ResponseWriter, request *http.Request) {
 		}
 	}
 
+	bidir := request.URL.Query().Get("bidir")
+	testBidir := *iperf3Bidir
+	if bidir != "" {
+		testBidir, err = strconv.ParseBool(bidir)
+		if err != nil {
+			http.Error(w, "'bidir' parameter must be bool", http.StatusBadRequest)
+			iperf3Errors.Inc()
+			logger.Error("'bidir' paramter could not be parsed as bool")
+			return
+		}
+	}
+
 	var testBandwidth *string
 	if *iperf3Bandwidth != "" {
 		testBandwidth = iperf3Bandwidth
@@ -180,6 +206,7 @@ func handleProbeRequest(w http.ResponseWriter, request *http.Request) {
 		OmitDuration: testOmitDuration,
 		MSS:          testMss,
 		Reverse:      testReverse,
+		Bidir:        testBidir,
 		Bandwidth:    testBandwidth,
 		Port:         testPort,
 
